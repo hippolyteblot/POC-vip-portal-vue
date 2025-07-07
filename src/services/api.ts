@@ -86,7 +86,6 @@ export async function loginUser(
     password: string
 ): Promise<string> {
     try {
-        console.log('Logging with:', username, password);
         const res = await api.post('/authenticate', {
             username,
             password
