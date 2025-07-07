@@ -28,7 +28,8 @@ export default defineConfig({
         ws: true,
         rewrite: (path) => {
           console.log("Rewriting:", path);
-          return path.replace(/^\/api/, '/http://134.158.151.117');
+          //return path.replace(/^\/api/, '/http://134.158.151.117');
+          return path.replace(/^\/api/, '/https://vip.creatis.insa-lyon.fr');
         },
         configure: (proxy, options) => {
           proxy.on('proxyReq', (proxyReq, req, res) => {
