@@ -15,7 +15,7 @@ const routes: RouteRecordRaw[] = [
 ];
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory('/new_front/'),
   routes,
 });
 

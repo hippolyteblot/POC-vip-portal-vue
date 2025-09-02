@@ -14,29 +14,10 @@ export default defineConfig({
     vueDevTools(),
     tailwindcss(),
   ],
+  base: '/new_front/',
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-        secure: false,
-        ws: true,
-        rewrite: (path) => {
-          console.log("Rewriting:", path);
-          //return path.replace(/^\/api/, '/http://134.158.151.117');
-          return path.replace(/^\/api/, '/https://vip.creatis.insa-lyon.fr');
-        },
-        configure: (proxy, options) => {
-          proxy.on('proxyReq', (proxyReq, req, res) => {
-            console.log(`Redirecting ${req.url} to ${proxyReq.path}`);
-          });
-        },
-      }
-    }
-  }
 })

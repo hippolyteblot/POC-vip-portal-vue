@@ -8,7 +8,7 @@
           <p class="login-subtitle">Connectez-vous à votre compte VIP Portal</p>
         </div>
         
-        <form @submit.prevent="handleLogin" class="login-form">
+        <form @submit.prevent="handleLogin" id="login-form" class="login-form">
           <div class="form-group">
             <label for="username" class="form-label">Nom d'utilisateur</label>
             <div class="login-input-wrapper">
@@ -19,9 +19,11 @@
               <input
                 id="username"
                 type="text"
+                name="username"
                 v-model="username"
                 class="login-input"
                 placeholder="Entrez votre nom d'utilisateur"
+                autocomplete="username"
                 required
               />
             </div>
@@ -37,9 +39,11 @@
               <input
                 id="password"
                 :type="showPassword ? 'text' : 'password'"
+                name="password"
                 v-model="password"
                 class="login-input"
                 placeholder="Entrez votre mot de passe"
+                autocomplete="current-password"
                 required
               />
               <button
@@ -62,7 +66,7 @@
           
           <div class="login-options">
             <div class="login-remember">
-              <input type="checkbox" id="remember" class="login-checkbox" />
+              <input type="checkbox" id="remember" class="login-checkbox" v-model="remember" />
               <label for="remember" class="login-checkbox-label">Se souvenir de moi</label>
             </div>
             <a href="#" class="login-forgot-link">Mot de passe oublié ?</a>
@@ -86,45 +90,97 @@
             </svg>
           </button>
         </form>
+
+        <div id="actions" class="mt-4">
+          <button id="btn-admin" class="secondary" v-if="showAdmin" @click="handleLoadAdmin">Charger les applications admin</button>
+          <button id="btn-logout" class="secondary" v-if="showLogout" @click="handleLogout">Logout</button>
+        </div>
+
+        <pre id="result" style="white-space:pre-wrap;">{{ result }}</pre>
       </div>
     </div>
   </div>
 </template>
 
-<script setup>
-import { ref } from "vue";
-import { useRouter } from "vue-router";
-import { loginUser } from "@/services/api";
+<script setup lang="ts">
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import {
+  loginSession,
+  fetchAdminApplications,
+  logoutSession,
+  setVipCookies,
+  clearVipCookies,
+} from '@/services/api';
 
 const router = useRouter();
 
-const username = ref("");
-const password = ref("");
-const errorMessage = ref("");
+const username = ref('');
+const password = ref('');
+const errorMessage = ref('');
 const showPassword = ref(false);
+const remember = ref(true);
+
+const result = ref('');
+const showAdmin = ref(false);
+const showLogout = ref(false);
+let sessionHeaderName: string | null = null;
+let sessionHeaderValue: string | null = null;
 
 const togglePasswordVisibility = () => {
   showPassword.value = !showPassword.value;
 };
 
 const handleLogin = async () => {
-  errorMessage.value = ""; // Reset errors
+  errorMessage.value = '';
+  result.value = '';
 
   if (!username.value || !password.value) {
-    errorMessage.value = "Veuillez remplir tous les champs.";
+    errorMessage.value = 'Veuillez remplir tous les champs.';
     return;
   }
 
   try {
-    const apiKey = await loginUser(username.value, password.value);
+    const data = await loginSession(username.value, password.value);
+    sessionHeaderName = data.httpHeader;
+    sessionHeaderValue = data.httpHeaderValue;
 
-    if (apiKey) {
-      localStorage.setItem("apiKey", apiKey);
-      router.push("/");
-    }
-  } catch (error) {
-    console.error("Erreur lors de l'authentification :", error);
-    errorMessage.value = "Identifiants incorrects.";
+    // Cookies VIP (1 jour si remember, session sinon)
+    const days = remember.value ? 1 : 0.04; // ~1h
+    setVipCookies(username.value, sessionHeaderValue, days);
+
+    result.value = 'Authentification réussie. Boutons admin et logout visibles.';
+    showAdmin.value = true;
+    showLogout.value = true;
+
+    // Redirection optionnelle post-login
+    // await router.push('/');
+  } catch (error: any) {
+    console.error('Erreur lors de l\'authentification :', error);
+    errorMessage.value = error?.response?.statusText || 'Identifiants incorrects.';
+  }
+};
+
+const handleLoadAdmin = async () => {
+  result.value = '';
+  try {
+    const data = await fetchAdminApplications();
+    result.value = JSON.stringify(data, null, 2);
+  } catch (e: any) {
+    result.value = `Erreur: ${e?.response?.status} ${e?.response?.statusText}`;
+  }
+};
+
+const handleLogout = async () => {
+  result.value = '';
+  try {
+    await logoutSession();
+    clearVipCookies();
+    showLogout.value = false;
+    showAdmin.value = false;
+    result.value = 'Logout';
+  } catch (e: any) {
+    result.value = `Logout échoué: ${e?.response?.status} ${e?.response?.statusText}`;
   }
 };
 </script>
@@ -134,7 +190,7 @@ const handleLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 70px - 200px); /* Hauteur de la navbar et du footer */
+  min-height: calc(100vh - 70px - 200px);
   padding: 2rem;
 }
 
